@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import StartScreen from './components/StartScreen';
-// import GameBoard from './components/GameBoard'; // We will build this next
+import DuckHunt from './components/DuckHunt';
 
 export default function App() {
   // 'booting', 'playing', 'game_over'
@@ -17,7 +17,7 @@ export default function App() {
       {appState === 'playing' && (
         <div style={{ color: 'white', textAlign: 'center', marginTop: '20vh' }}>
           <h2>Game Board goes here!</h2>
-          {/* <GameBoard /> */}
+          <DuckHunt />
         </div>
       )}
     </div>
