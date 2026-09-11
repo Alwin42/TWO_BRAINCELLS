@@ -8,13 +8,31 @@ const DuckHunt = ({ onGameOver }) => {
     const ctx = canvas.getContext('2d');
     let animationFrameId;
 
+    // --- AUDIO SETUP ---
+    const audioPath = '/audio/';
+    // Using the exact filenames from your terminal output
+    const sfx = {
+      gunshot: new Audio(`${audioPath}Gunshot-SFX).mp3`),
+      fall: new Audio(`${audioPath}Dead-Duck-Falls-(SFX).mp3`),
+      duckGet: new Audio(`${audioPath}Duck-Get!.mp3`),
+      miss: new Audio(`${audioPath}Miss(SFX).mp3`),
+      quack: new Audio(`${audioPath}Duck.mp3`)
+    };
+
+    // Helper function to allow overlapping sounds (like rapid-firing)
+    const playSound = (audioNode, volume = 1.0) => {
+      const soundClone = audioNode.cloneNode();
+      soundClone.volume = volume;
+      // .catch() prevents console spam if the browser blocks audio before the first user click
+      soundClone.play().catch(e => console.warn('Audio blocked until user interaction', e));
+    };
+
     // --- FULL SCREEN RESIZE LOGIC ---
     const resizeCanvas = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
     };
     
-    // Set initial size and listen for window changes
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
@@ -49,14 +67,14 @@ const DuckHunt = ({ onGameOver }) => {
     const spawnDuck = () => {
       duck.state = 'flying';
       duck.x = -100;
-      // Keep spawn height relative to the new dynamic screen size
       duck.y = Math.random() * (canvas.height * 0.5) + 50; 
-      
       duck.speedX = 2.5 + Math.random() * 2; 
       duck.speedY = -1 + Math.random() * 2; 
-      
       duck.frame = 0;
       duck.frameCount = 0;
+      
+      // Play a quack when a new duck appears
+      playSound(sfx.quack, 0.4); 
     };
 
     spawnDuck();
@@ -68,15 +86,25 @@ const DuckHunt = ({ onGameOver }) => {
       const mouseX = e.offsetX; 
       const mouseY = e.offsetY;
 
-      if (e.button === 0) { // Left Click
+      if (e.button === 0) { // Left Click = Shoot
+        
+        // 1. Always play the gunshot sound on left click!
+        playSound(sfx.gunshot);
+
+        // 2. Check for a hit
         if (
           duck.state === 'flying' &&
           mouseX >= duck.x && mouseX <= duck.x + duck.width &&
           mouseY >= duck.y && mouseY <= duck.y + duck.height
         ) {
+          // HIT!
           duck.state = 'falling';
           duck.frame = 0;
           duck.frameCount = 0;
+          
+          // Play the duck getting hit / falling sounds
+          playSound(sfx.fall);
+          setTimeout(() => playSound(sfx.duckGet), 800); // Play "Duck Get!" slightly delayed
         }
       } else if (e.button === 2) { // Right Click
         spawnDuck(); 
@@ -96,15 +124,15 @@ const DuckHunt = ({ onGameOver }) => {
         duck.x += duck.speedX;
         duck.y += duck.speedY;
 
-        // Bounce off top/bottom relative to screen height
         if (duck.y < 50 || duck.y > canvas.height * 0.7) duck.speedY *= -1;
 
         if (duck.frameCount % duck.animationSpeed === 0) {
           duck.frame = (duck.frame + 1) % flyImages.length;
         }
 
-        // Respawn if it escapes off the dynamic right edge
+        // Missed! Duck escapes off the right edge
         if (duck.x > canvas.width) {
+          playSound(sfx.miss); // Dog laughing / Miss sound
           spawnDuck();
         }
 
@@ -115,6 +143,7 @@ const DuckHunt = ({ onGameOver }) => {
           duck.frame = (duck.frame + 1) % fallImages.length;
         }
 
+        // Duck hits the ground
         if (duck.y > canvas.height) {
           spawnDuck();
         }
@@ -145,7 +174,7 @@ const DuckHunt = ({ onGameOver }) => {
     <canvas 
       ref={canvasRef} 
       style={{ 
-        display: 'block', // Removes tiny gap at bottom of canvas
+        display: 'block', 
         backgroundColor: '#64b0ff', 
         cursor: 'crosshair',
       }} 
