@@ -11,15 +11,18 @@ export default function App() {
   };
 
   return (
-    <div className="app-container">
+    // Ensure the main container has no default margins
+    <div className="app-container" style={{ margin: 0, padding: 0, overflow: 'hidden' }}>
+      
       {appState === 'booting' && <StartScreen onStart={startGame} />}
       
       {appState === 'playing' && (
-        <div style={{ color: 'white', textAlign: 'center', marginTop: '20vh' }}>
-          <h2>Game Board goes here!</h2>
+        
+        <div style={{ width: '100vw', height: '100vh' }}>
           <DuckHunt />
         </div>
       )}
+      
     </div>
   );
 }

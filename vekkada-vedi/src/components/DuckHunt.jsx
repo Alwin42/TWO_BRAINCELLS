@@ -8,6 +8,16 @@ const DuckHunt = ({ onGameOver }) => {
     const ctx = canvas.getContext('2d');
     let animationFrameId;
 
+    // --- FULL SCREEN RESIZE LOGIC ---
+    const resizeCanvas = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    
+    // Set initial size and listen for window changes
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
     // --- 1. ASSET LOADING ---
     const basePath = '/duck-images/';
     const flyImages = ['flying.png', 'flying02.png', 'flying03.png', 'flying04.png'].map(src => {
@@ -23,7 +33,6 @@ const DuckHunt = ({ onGameOver }) => {
     });
 
     // --- 2. GAME STATE ---
-    // We use a mutable object so we can update it 60 times a second without React lagging
     let duck = {
       x: -100, 
       y: 300,
@@ -33,16 +42,16 @@ const DuckHunt = ({ onGameOver }) => {
       speedY: -0.5,
       frame: 0,
       frameCount: 0,
-      animationSpeed: 10, // Lower = faster flapping
+      animationSpeed: 10,
       state: 'flying', 
     };
 
     const spawnDuck = () => {
       duck.state = 'flying';
       duck.x = -100;
-      duck.y = Math.random() * 300 + 100; 
+      // Keep spawn height relative to the new dynamic screen size
+      duck.y = Math.random() * (canvas.height * 0.5) + 50; 
       
-      // Give each duck a slightly random flight speed and trajectory
       duck.speedX = 2.5 + Math.random() * 2; 
       duck.speedY = -1 + Math.random() * 2; 
       
@@ -56,7 +65,6 @@ const DuckHunt = ({ onGameOver }) => {
     const handleMouseInput = (e) => {
       e.preventDefault();
       
-      // offsetX/Y gives exact coordinates relative to the canvas itself
       const mouseX = e.offsetX; 
       const mouseY = e.offsetY;
 
@@ -66,7 +74,6 @@ const DuckHunt = ({ onGameOver }) => {
           mouseX >= duck.x && mouseX <= duck.x + duck.width &&
           mouseY >= duck.y && mouseY <= duck.y + duck.height
         ) {
-          // HIT!
           duck.state = 'falling';
           duck.frame = 0;
           duck.frameCount = 0;
@@ -81,44 +88,38 @@ const DuckHunt = ({ onGameOver }) => {
 
     // --- 4. THE GAME LOOP ---
     const gameLoop = () => {
-      // 1. Clear the previous frame
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       
-      // 2. Update the duck's math
       duck.frameCount++;
 
       if (duck.state === 'flying') {
         duck.x += duck.speedX;
         duck.y += duck.speedY;
 
-        // Bounce off top/bottom invisible walls so it doesn't fly off-screen vertically
-        if (duck.y < 50 || duck.y > 400) duck.speedY *= -1;
+        // Bounce off top/bottom relative to screen height
+        if (duck.y < 50 || duck.y > canvas.height * 0.7) duck.speedY *= -1;
 
-        // Cycle through flying sprite frames
         if (duck.frameCount % duck.animationSpeed === 0) {
           duck.frame = (duck.frame + 1) % flyImages.length;
         }
 
-        // Respawn if it escapes off the right side of the screen
+        // Respawn if it escapes off the dynamic right edge
         if (duck.x > canvas.width) {
           spawnDuck();
         }
 
       } else if (duck.state === 'falling') {
-        duck.y += 6; // Fall straight down
+        duck.y += 6; 
 
-        // Cycle through falling sprite frames (spin faster than flying)
         if (duck.frameCount % 5 === 0) { 
           duck.frame = (duck.frame + 1) % fallImages.length;
         }
 
-        // Respawn after it falls below the bottom of the canvas
         if (duck.y > canvas.height) {
           spawnDuck();
         }
       }
 
-      // 3. Draw the current state to the canvas
       const imgArray = duck.state === 'flying' ? flyImages : fallImages;
       const currentImage = imgArray[duck.frame] || imgArray[0]; 
       
@@ -126,7 +127,6 @@ const DuckHunt = ({ onGameOver }) => {
         ctx.drawImage(currentImage, duck.x, duck.y, duck.width, duck.height);
       }
       
-      // 4. Loop again
       animationFrameId = requestAnimationFrame(gameLoop);
     };
 
@@ -135,6 +135,7 @@ const DuckHunt = ({ onGameOver }) => {
     // --- 5. CLEANUP ---
     return () => {
       cancelAnimationFrame(animationFrameId);
+      window.removeEventListener('resize', resizeCanvas);
       canvas.removeEventListener('mousedown', handleMouseInput);
       canvas.removeEventListener('contextmenu', e => e.preventDefault());
     };
@@ -143,13 +144,10 @@ const DuckHunt = ({ onGameOver }) => {
   return (
     <canvas 
       ref={canvasRef} 
-      width={800} 
-      height={600} 
       style={{ 
+        display: 'block', // Removes tiny gap at bottom of canvas
         backgroundColor: '#64b0ff', 
         cursor: 'crosshair',
-        boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
-        border: '4px solid #fff'
       }} 
     />
   );
